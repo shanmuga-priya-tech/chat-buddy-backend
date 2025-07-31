@@ -1,0 +1,16 @@
+langchain==0.3.26
+langchain-community==0.3.26
+langchain-core==0.3.67
+langchain-google-genai==2.0.10
+langchain-pinecone==0.2.8
+langchain-text-splitters==0.3.8
+pinecone
+pinecone-plugin-assistant==1.7.0
+pinecone-plugin-interface==0.0.7
+PyMuPDF==1.26.1
+python-dotenv==1.1.1
+tiktoken==0.9.0
+pymongo==4.13.2
+flask
+firebase_admin
+flask_cors
