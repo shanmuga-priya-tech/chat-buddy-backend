@@ -2,3 +2,5 @@ firebase-config.json
 .env
 venvName
 __pycache__
+pinecone.scectrets.txt
+learning

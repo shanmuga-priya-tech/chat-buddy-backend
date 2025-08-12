@@ -14,3 +14,4 @@ pymongo==4.13.2
 flask
 firebase_admin
 flask_cors
+tavily
