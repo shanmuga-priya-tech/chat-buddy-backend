@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 from langchain.tools import tool
 from tavily import TavilyClient
 from langchain_google_genai import ChatGoogleGenerativeAI
-from components.vectorstore import get_vectorstore
+# from components.dataset_vectorstore import get_vectorstore
 
 
 load_dotenv()
@@ -14,20 +14,6 @@ TAVILY_API_KEY = os.getenv("TAVILY_API_KEY")
 
 # Init Gemini here so tools can use it directly
 llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash")
-
-#summarise
-def summarise_pdf(namespace):
-    """Fetch all chunks from namespace and summarise."""
-    vectorstore = get_vectorstore()
-    retriever = vectorstore.as_retriever(search_kwargs={"k": 50, "namespace": namespace})
-    chunks = retriever.get_relevant_documents(" ")  # blank query to get all
-    chunks_text = "\n".join([doc.page_content for doc in chunks])
-
-    prompt = f"Summarize the following loan document in concise bullet points:\n\n{chunks_text}"
-    out = llm.generate([{"role": "user", "content": prompt}])
-    print(out)
-    return out.generations[0].text
-
 
 
 #web search

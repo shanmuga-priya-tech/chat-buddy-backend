@@ -1,27 +1,19 @@
-from flask import Blueprint, request, jsonify
+from flask import jsonify
 from pathlib import Path
-from services.firebase import get_user_id_from_request
-from helpers.file_upload import compute_file_hash, is_duplicate, record_upload
+from helpers.duplicate_check import compute_file_hash, is_duplicate, user_record_upload
 from components.loading_chunking import data_loader_and_chunking
-from components.dataset_vectorstore import index_documents
+from components.userSpecific.user_vectorstore import index_documents
 from helpers.is_valid_pdf import is_valid_pdf
 from datetime import datetime,timezone
+from services.mongo import uploads_collection
 
-upload_bp = Blueprint("upload", __name__)
 
 UPLOAD_FOLDER = Path("uploads")
 UPLOAD_FOLDER.mkdir(exist_ok=True)
 
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
 
-@upload_bp.route("/upload", methods=["POST"])
-def upload_pdf():
-    uploaded_file = request.files.get("file")
-
-    # 1) Check if file is provided
-    if not uploaded_file:
-        return jsonify({"error": "No file uploaded"}), 400
-
+def upload_pdf(uploaded_file,session_id,user_id):
     # 2) Basic extension check
     if not uploaded_file.filename.lower().endswith(".pdf"):
         return jsonify({"error": "Only PDF files are allowed"}), 400
@@ -48,6 +40,8 @@ def upload_pdf():
     file_path = UPLOAD_FOLDER / uploaded_file.filename
     file_path.write_bytes(content)
 
+    #8) create namspace unique to  uploaded pdf
+    namespace = f"{session_id}"
 
     try:
         # 9) Load and chunk the file
@@ -56,11 +50,18 @@ def upload_pdf():
         # 10) # Clean existing metadata: remove keys with empty string values and Prepare metadata for each chunk
         for doc in chunks:
             doc.metadata = {k: v for k, v in doc.metadata.items() if v != ""}
+            doc.metadata["user_id"] = user_id
             doc.metadata["filename"] = uploaded_file.filename
-            doc.metadata["uploaded_at"] = datetime.now(timezone.utc).isoformat()
+            doc.metadata["namespace"] = namespace
                             
         # 11) Index into Pinecone with namespace
-        index_documents(chunks)
+        index_documents(chunks,namespace=namespace)
+        # Update MongoDB to flag PDF as indexed
+        uploads_collection.update_one(
+            {"namespace": namespace},
+            {"$set": {"pdf_indexed": True, "indexed_at": datetime.now(timezone.utc).isoformat()}},
+            upsert=True  # create document if it doesn’t exist
+        )
         
 
     except ValueError as e:
@@ -69,7 +70,6 @@ def upload_pdf():
         file_path.unlink()
 
     # 12) Record the upload in MongoDB
-    record_upload(uploaded_file.filename, file_hash,datetime.now(timezone.utc).isoformat())
+    user_record_upload(user_id,uploaded_file.filename, file_hash,namespace,datetime.now(timezone.utc).isoformat())
 
-    return jsonify({"message": "File uploaded and indexed successfully.", "chunks": len(chunks)})
-
+    return jsonify({"message": "File uploaded and indexed successfully.", "chunks": len(chunks)}),200

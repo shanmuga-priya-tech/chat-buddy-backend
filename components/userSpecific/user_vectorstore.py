@@ -7,10 +7,10 @@ from components.config import PINECONE_API_KEY, PINECONE_INDEX_NAME
 
 embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
 
-
-def get_vectorstore():
-    pc = Pinecone(api_key=PINECONE_API_KEY)
-    return PineconeVectorStore(index_name=PINECONE_INDEX_NAME, embedding=embeddings)
+pc = Pinecone(api_key=PINECONE_API_KEY)
+def get_user_vectorstore(namespace):
+    return PineconeVectorStore(index_name=PINECONE_INDEX_NAME, embedding=embeddings,namespace=namespace)
 
 def index_documents(documents,namespace):
     PineconeVectorStore.from_documents(documents, index_name=PINECONE_INDEX_NAME, embedding=embeddings,namespace=namespace)
+    

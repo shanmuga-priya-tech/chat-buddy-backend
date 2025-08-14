@@ -1,7 +1,7 @@
 from langchain_core.chat_history import BaseChatMessageHistory
-from langchain_core.messages import HumanMessage, AIMessage
+from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 from pymongo import MongoClient
-from datetime import datetime,timezone
+from datetime import datetime, timezone
 
 
 class CustomMongoChatMessageHistory(BaseChatMessageHistory):
@@ -13,23 +13,34 @@ class CustomMongoChatMessageHistory(BaseChatMessageHistory):
     @property
     def messages(self):
         docs = self.collection.find({"sessionId": self.session_id}).sort("timestamp", 1)
-        print("docs:", list(docs))
         messages = []
         for doc in docs:
-            if doc["role"] == "user":
-                messages.append(HumanMessage(content=doc["content"]))
-            elif doc["role"] == "bot":
-                messages.append(AIMessage(content=doc["content"]))
+            role = doc.get("role")
+            content = doc.get("content", "")
+            if role == "user":
+                messages.append(HumanMessage(content=content))
+            elif role == "bot":
+                messages.append(AIMessage(content=content))
+            elif role == "system":
+                messages.append(SystemMessage(content=content))
         return messages
 
     def add_message(self, message):
-        role = "user" if isinstance(message, HumanMessage) else "bot"
+        if isinstance(message, HumanMessage):
+            role = "user"
+        elif isinstance(message, AIMessage):
+            role = "bot"
+        elif isinstance(message, SystemMessage):
+            role = "system"
+        else:
+            raise ValueError(f"Unknown message type: {type(message)}")
+
         self.collection.insert_one({
             "sessionId": self.session_id,
             "role": role,
             "content": message.content,
-            "createdAt": datetime.now(timezone.utc).isoformat()
+            "timestamp": datetime.now(timezone.utc)  # Use consistent timestamp field
         })
 
     def clear(self):
-        self.collection.delete_many({"session_id": self.session_id})
+        self.collection.delete_many({"sessionId": self.session_id})  # Fixed key name

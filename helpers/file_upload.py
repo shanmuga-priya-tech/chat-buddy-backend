@@ -1,5 +1,5 @@
 import hashlib
-from services.mongo import uploads_collection
+from services.mongo import dataset_collection
 
 #hashing file to store in db
 def compute_file_hash(content):
@@ -7,8 +7,8 @@ def compute_file_hash(content):
 
 # Check if file hash already exists
 def is_duplicate(file_hash):
-    return uploads_collection.find_one({"file_hash": file_hash}) is not None
+    return dataset_collection.find_one({"file_hash": file_hash}) is not None
 
 # Record file info in MongoDB
-def record_upload(userid, filename, file_hash, namespace):
-    return uploads_collection.insert_one({"userid":userid,"filename": filename, "file_hash": file_hash,"namespace":namespace})
+def record_upload(filename, file_hash, uploaded_at):
+    return dataset_collection.insert_one({"filename": filename, "file_hash": file_hash,"uploaded_at":uploaded_at})
